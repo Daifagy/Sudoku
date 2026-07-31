@@ -31,7 +31,7 @@ Modern, mobil uyumlu, göz yormayan temalara ve eğlenceli dinamik efektlere sah
 
 ### Web Üzerinden Oynayın
 Oyun canlı olarak GitHub Pages üzerinde yayınlanmaktadır:
-👉 **[Sudoku Pro Canlı Oyna](https://daifagy.github.io/Sudoku/)**
+👉 **[Sudoku Canlı Oyna](https://daifagy.github.io/Sudoku/)**
 
 ### Android Cihaza Uygulama Olarak Yükleme
 1. Android cihazınızdan **Chrome** tarayıcısı ile yukarıdaki canlı adrese gidin.
