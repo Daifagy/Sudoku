@@ -32,12 +32,14 @@
             --primary-color: #63b3ed;     
             --given-color: #ffffff;       
             --note-color: #a0aec0;        
+            --note-highlight-bg: #3182ce; /* Hızlı kalem vurgulu not arka planı */
+            --note-highlight-text: #ffffff;
             
             --btn-bg: #2d3748;
             --btn-text: #e2e8f0;
             --btn-active-bg: #3182ce;
             --completed-num: #4a5568;     
-            --count-text-color: #a0aec0;  /* Kalan sayı rozet rengi */
+            --count-text-color: #a0aec0;  
         }
 
         [data-theme="light"] {
@@ -63,6 +65,8 @@
             --primary-color: #2b6cb0;     
             --given-color: #1a202c;       
             --note-color: #718096;        
+            --note-highlight-bg: #3182ce;
+            --note-highlight-text: #ffffff;
             
             --btn-bg: #edf2f7;
             --btn-text: #2d3748;
@@ -189,7 +193,6 @@
             color: var(--primary-color);
         }
 
-        /* 3x3 Blok Sınırları */
         .cell:nth-child(3n) { border-right: 2px solid var(--bold-border-color); }
         .cell:nth-child(9n) { border-right: none; }
         .cell[data-row="2"], .cell[data-row="5"] { border-bottom: 2px solid var(--bold-border-color); }
@@ -247,7 +250,7 @@
             z-index: 10;
         }
 
-        /* Notlar */
+        /* Not Izgarası ve Vurgulu Not Görseli */
         .notes-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -255,7 +258,7 @@
             width: 100%;
             height: 100%;
             position: absolute;
-            padding: 2px;
+            padding: 1px;
             pointer-events: none;
         }
 
@@ -266,20 +269,29 @@
             font-size: 0.65rem;
             color: var(--note-color);
             font-weight: 600;
+            border-radius: 3px;
+            transition: all 0.15s ease;
         }
 
-        /* Aksiyon Menüsü */
+        /* Görsellerdeki Seçili Sayının Minik Not Vurgusu */
+        .note-num.highlighted-note {
+            background-color: var(--note-highlight-bg);
+            color: var(--note-highlight-text);
+            font-weight: bold;
+        }
+
+        /* 6 Butonlu Yeni Aksiyon Barı */
         .action-bar {
             width: 100%;
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 4px;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 3px;
             margin-top: 12px;
         }
 
         .action-bar button {
-            padding: 10px 0;
-            font-size: 0.75rem;
+            padding: 8px 0;
+            font-size: 0.7rem;
             background-color: var(--btn-bg);
             border: 1px solid var(--border-color);
             color: var(--btn-text);
@@ -299,7 +311,6 @@
             pointer-events: none;
         }
 
-        /* YENİLENMİŞ TUŞ TAKIMI VE KULLANIM SAYAÇLARI */
         .numpad {
             width: 100%;
             display: grid;
@@ -357,7 +368,7 @@
             .num-btn { padding: 6px 0; }
             .num-btn .num-main { font-size: 1.1rem; }
             .num-btn .num-count { font-size: 0.65rem; }
-            .action-bar button { font-size: 0.7rem; padding: 8px 0; }
+            .action-bar button { font-size: 0.65rem; padding: 6px 0; }
         }
     </style>
 </head>
@@ -392,15 +403,16 @@
         </div>
     </div>
 
+    <!-- HIZLI KALEM EKLENMİŞ 6 BUTONLU AKSİYON BAR -->
     <div class="action-bar">
         <button id="undo-btn">↩ Geri</button>
         <button id="erase-btn">⌫ Sil</button>
         <button id="note-mode-btn">✏️ Not</button>
+        <button id="auto-note-btn">⚡ Hızlı Kalem</button>
         <button id="hint-btn">💡 İpucu (3)</button>
         <button id="theme-toggle-btn">🌙 Gece</button>
     </div>
 
-    <!-- SAYAÇLI TUŞ TAKIMI -->
     <div class="numpad">
         <button class="num-btn" data-val="1"><span class="num-main">1</span><span class="num-count" id="count-1">9</span></button>
         <button class="num-btn" data-val="2"><span class="num-main">2</span><span class="num-count" id="count-2">9</span></button>
@@ -423,6 +435,7 @@ class SudokuGame {
         this.gameOverOverlay = document.getElementById('game-over');
         this.difficultySelect = document.getElementById('difficulty');
         this.noteBtn = document.getElementById('note-mode-btn');
+        this.autoNoteBtn = document.getElementById('auto-note-btn');
         this.hintBtn = document.getElementById('hint-btn');
         this.themeBtn = document.getElementById('theme-toggle-btn');
 
@@ -436,6 +449,7 @@ class SudokuGame {
 
         this.selectedCell = null;
         this.isNoteMode = false;
+        this.isAutoNoteMode = false; // Hızlı Kalem Modu
         this.lives = 5;
         this.hintsRemaining = 3;
         this.isGameOver = false;
@@ -467,6 +481,9 @@ class SudokuGame {
             this.noteBtn.classList.toggle('active', this.isNoteMode);
         });
 
+        // Hızlı Kalem Buton Dinleyicisi
+        this.autoNoteBtn.addEventListener('click', () => this.toggleAutoNotes());
+
         this.themeBtn.addEventListener('click', () => {
             const currentTheme = document.body.getAttribute('data-theme');
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -479,6 +496,7 @@ class SudokuGame {
             if (e.key >= '1' && e.key <= '9') this.handleInput(parseInt(e.key));
             else if (e.key === 'Backspace' || e.key === 'Delete') this.handleInput(0);
             else if (e.key.toLowerCase() === 'n') this.noteBtn.click();
+            else if (e.key.toLowerCase() === 'a') this.autoNoteBtn.click();
             else if (e.key.toLowerCase() === 'h') this.useHint();
             else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') this.undo();
         });
@@ -492,6 +510,8 @@ class SudokuGame {
         this.lives = 5;
         this.hintsRemaining = 3;
         this.isGameOver = false;
+        this.isAutoNoteMode = false;
+        this.autoNoteBtn.classList.remove('active');
         this.gameOverOverlay.style.display = 'none';
         
         this.updateLivesDisplay();
@@ -564,6 +584,37 @@ class SudokuGame {
         return true;
     }
 
+    // --- HIZLI KALEM (OTOMATİK ADAY NOTLARI) MANTIĞI ---
+    toggleAutoNotes() {
+        this.isAutoNoteMode = !this.isAutoNoteMode;
+        this.autoNoteBtn.classList.toggle('active', this.isAutoNoteMode);
+
+        if (this.isAutoNoteMode) {
+            this.calculateAllAutoNotes();
+        } else {
+            // Hızlı Kalem kapatılırsa tüm notları temizle
+            this.notesBoard = Array(9).fill(0).map(() => Array(9).fill(0).map(() => new Set()));
+        }
+
+        this.renderBoard();
+        if (this.selectedCell) this.selectCell(this.selectedCell.row, this.selectedCell.col);
+    }
+
+    calculateAllAutoNotes() {
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                this.notesBoard[r][c].clear();
+                if (this.currentBoard[r][c] === 0) {
+                    for (let val = 1; val <= 9; val++) {
+                        if (this.isValid(this.currentBoard, r, c, val)) {
+                            this.notesBoard[r][c].add(val);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     saveState() {
         this.history.push({
             currentBoard: this.currentBoard.map(row => [...row]),
@@ -628,6 +679,8 @@ class SudokuGame {
         this.hintsRemaining--;
         this.updateHintDisplay();
 
+        if (this.isAutoNoteMode) this.calculateAllAutoNotes();
+
         this.renderBoard();
         this.selectCell(targetRow, targetCol);
         this.checkErrors();
@@ -677,6 +730,8 @@ class SudokuGame {
                 }
             }
         }
+
+        if (this.isAutoNoteMode) this.calculateAllAutoNotes();
 
         this.renderBoard();
         this.selectCell(row, col);
@@ -771,7 +826,6 @@ class SudokuGame {
         }, 250);
     }
 
-    // DINAMIK RAKAM SAYAÇLARI GÜNCELLEMESI
     updateNumpadStatus() {
         const counts = Array(10).fill(0);
         for (let r = 0; r < 9; r++) {
@@ -802,6 +856,8 @@ class SudokuGame {
 
     renderBoard() {
         this.boardElement.innerHTML = '';
+        const selectedVal = this.selectedCell ? this.currentBoard[this.selectedCell.row][this.selectedCell.col] : 0;
+
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
                 const cell = document.createElement('div');
@@ -827,7 +883,13 @@ class SudokuGame {
                         for (let i = 1; i <= 9; i++) {
                             const noteNum = document.createElement('div');
                             noteNum.classList.add('note-num');
-                            if(notes.has(i)) noteNum.textContent = i;
+                            if(notes.has(i)) {
+                                noteNum.textContent = i;
+                                // SEÇİLİ SAYI VARSA MİNİK NOTLARI MAVİ KUTU EFEKTİ İLE VURGULA
+                                if (selectedVal !== 0 && i === selectedVal) {
+                                    noteNum.classList.add('highlighted-note');
+                                }
+                            }
                             notesGrid.appendChild(noteNum);
                         }
                         cell.appendChild(notesGrid);
@@ -863,7 +925,11 @@ class SudokuGame {
             if (cellR === r && cellC === c) {
                 cell.classList.add('selected');
             }
+
+            // Notların içindeki vurguları yeniden oluşturmak için renderBoard tetiklenir
         });
+
+        this.renderBoard();
     }
 
     checkErrors() {
