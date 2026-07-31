@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Sudoku Pro - Can Sistemli</title>
+    <!-- Konfeti ve Havai Fişek Kütüphanesi -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* --- TEMA DEĞİŞKENLERİ --- */
+        [data-theme="dark"] {
+            --bg-color: #121418;          
+            --card-bg: #1a1d24;           
+            --text-color: #e2e8f0;        
+            --border-color: #2d3748;      
+            --bold-border-color: #4a5568; 
+            
+            --selected-bg: #3182ce;       
+            --selected-text: #ffffff;
+            
+            --same-num-bg: #ffe082;       
+            --same-num-text: #1a202c;     
+            
+            --highlight-bg: #222733;      
+            --error-bg: #e53e3e;          
+            --error-text: #ffffff;
+            
+            --primary-color: #63b3ed;     
+            --given-color: #ffffff;       
+            --note-color: #a0aec0;        
+            
+            --btn-bg: #2d3748;
+            --btn-text: #e2e8f0;
+            --btn-active-bg: #3182ce;
+            --completed-num: #4a5568;     
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f7fafc;          
+            --card-bg: #ffffff;           
+            --text-color: #1a202c;        
+            --border-color: #cbd5e0;      
+            --bold-border-color: #2d3748; 
+            
+            --selected-bg: #3182ce;       
+            --selected-text: #ffffff;
+            
+            --same-num-bg: #f6e05e;       
+            --same-num-text: #1a202c;
+            
+            --highlight-bg: #edf2f7;      
+            --error-bg: #fed7d7;          
+            --error-text: #e53e3e;
+            
+            --primary-color: #2b6cb0;     
+            --given-color: #1a202c;       
+            --note-color: #718096;        
+            
+            --btn-bg: #edf2f7;
+            --btn-text: #2d3748;
+            --btn-active-bg: #3182ce;
+            --completed-num: #cbd5e0;     
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.3rem;
+            letter-spacing: 0.5px;
+        }
+
+        .stats-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        .lives-display {
+            color: #e53e3e;
+            letter-spacing: 2px;
+            font-size: 1.1rem;
+        }
+
+        .timer-display {
+            color: var(--primary-color);
+        }
+
+        .controls-top {
+            width: 100%;
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        select, button.top-btn {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-color);
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        select { flex: 2; }
+        button.top-btn { flex: 1; }
+
+        button:active { transform: scale(0.96); }
+
+        .board-container {
+            width: 100%;
+            aspect-ratio: 1;
+            background: var(--bold-border-color);
+            border: 2px solid var(--bold-border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            position: relative;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            grid-template-rows: repeat(9, 1fr);
+            height: 100%;
+            width: 100%;
+            background: var(--border-color);
+            gap: 1px;
+        }
+
+        .cell {
+            background: var(--card-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.15s ease;
+            color: var(--primary-color);
+        }
+
+        /* 3x3 Blok Sınırları */
+        .cell:nth-child(3n) { border-right: 2px solid var(--bold-border-color); }
+        .cell:nth-child(9n) { border-right: none; }
+        .cell[data-row="2"], .cell[data-row="5"] { border-bottom: 2px solid var(--bold-border-color); }
+
+        .cell.given {
+            color: var(--given-color);
+            font-weight: 800;
+        }
+
+        .cell.highlighted { background-color: var(--highlight-bg); }
+        .cell.same-number {
+            background-color: var(--same-num-bg) !important;
+            color: var(--same-num-text) !important;
+        }
+        .cell.selected {
+            background-color: var(--selected-bg) !important;
+            color: var(--selected-text) !important;
+        }
+        
+        /* HATA DURUMU */
+        .cell.error {
+            background-color: var(--error-bg) !important;
+            color: var(--error-text) !important;
+            animation: shake 0.3s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+
+        /* Oyun Bitti Maslak Kaplaması */
+        .game-over-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        /* Notlar */
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            padding: 2px;
+            pointer-events: none;
+        }
+
+        .note-num {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.65rem;
+            color: var(--note-color);
+            font-weight: 600;
+        }
+
+        /* Aksiyon Menüsü */
+        .action-bar {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .action-bar button {
+            padding: 10px 0;
+            font-size: 0.85rem;
+            background-color: var(--btn-bg);
+            border: 1px solid var(--border-color);
+            color: var(--btn-text);
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .action-bar button.active {
+            background-color: var(--btn-active-bg);
+            color: white;
+            border-color: var(--btn-active-bg);
+        }
+
+        /* Tuş Takımı */
+        .numpad {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 4px;
+            margin-top: 10px;
+        }
+
+        .num-btn {
+            padding: 14px 0;
+            font-size: 1.3rem;
+            font-weight: bold;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+        }
+
+        .num-btn.completed {
+            opacity: 0.3;
+            text-decoration: line-through;
+            background-color: var(--completed-num);
+            pointer-events: none;
+            box-shadow: none;
+        }
+
+        @media (max-width: 400px) {
+            .cell { font-size: 1.3rem; }
+            .note-num { font-size: 0.55rem; }
+            .num-btn { padding: 10px 0; font-size: 1.1rem; }
+            .action-bar button { font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+<div class="container">
+    <header>
+        <h1>Sudoku Pro</h1>
+        <div class="stats-bar">
+            <span id="lives" class="lives-display">❤️❤️❤️❤️❤️</span>
+            <span id="timer" class="timer-display">00:00</span>
+        </div>
+    </header>
+
+    <div class="controls-top">
+        <select id="difficulty">
+            <option value="easy">Kolay</option>
+            <option value="medium" selected>Orta</option>
+            <option value="hard">Zor</option>
+            <option value="expert">Uzman</option>
+            <option value="master">Usta</option>
+            <option value="extreme">Ekstrem</option>
+        </select>
+        <button id="new-game-btn" class="top-btn">Yeni Oyun</button>
+    </div>
+
+    <div class="board-container">
+        <div id="board" class="board"></div>
+        <div id="game-over" class="game-over-overlay" style="display: none;">
+            <span>OYUN BİTTİ!</span>
+            <span style="font-size: 0.9rem; font-weight: normal; margin-top: 8px;">Can hakların tükendi.</span>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <button id="undo-btn">↩ Geri</button>
+        <button id="erase-btn">⌫ Sil</button>
+        <button id="note-mode-btn">✏️ Not</button>
+        <button id="theme-toggle-btn">🌙 Gece</button>
+    </div>
+
+    <div class="numpad">
+        <button class="num-btn" data-val="1">1</button>
+        <button class="num-btn" data-val="2">2</button>
+        <button class="num-btn" data-val="3">3</button>
+        <button class="num-btn" data-val="4">4</button>
+        <button class="num-btn" data-val="5">5</button>
+        <button class="num-btn" data-val="6">6</button>
+        <button class="num-btn" data-val="7">7</button>
+        <button class="num-btn" data-val="8">8</button>
+        <button class="num-btn" data-val="9">9</button>
+    </div>
+</div>
+
+<script>
+class SudokuGame {
+    constructor() {
+        this.boardElement = document.getElementById('board');
+        this.timerElement = document.getElementById('timer');
+        this.livesElement = document.getElementById('lives');
+        this.gameOverOverlay = document.getElementById('game-over');
+        this.difficultySelect = document.getElementById('difficulty');
+        this.noteBtn = document.getElementById('note-mode-btn');
+        this.themeBtn = document.getElementById('theme-toggle-btn');
+
+        this.solution = [];
+        this.initialBoard = [];
+        this.currentBoard = [];
+        this.notesBoard = [];
+        this.history = [];
+        this.completedBoxes = new Set();
+
+        this.selectedCell = null;
+        this.isNoteMode = false;
+        this.lives = 5;
+        this.isGameOver = false;
+
+        this.timer = null;
+        this.secondsElapsed = 0;
+
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.startNewGame();
+    }
+
+    setupEventListeners() {
+        document.getElementById('new-game-btn').addEventListener('click', () => this.startNewGame());
+        
+        document.querySelectorAll('.num-btn[data-val]').forEach(btn => {
+            btn.addEventListener('click', () => this.handleInput(parseInt(btn.dataset.val)));
+        });
+
+        document.getElementById('erase-btn').addEventListener('click', () => this.handleInput(0));
+        document.getElementById('undo-btn').addEventListener('click', () => this.undo());
+
+        this.noteBtn.addEventListener('click', () => {
+            this.isNoteMode = !this.isNoteMode;
+            this.noteBtn.classList.toggle('active', this.isNoteMode);
+        });
+
+        this.themeBtn.addEventListener('click', () => {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', newTheme);
+            this.themeBtn.textContent = newTheme === 'dark' ? '🌙 Gece' : '☀️ Gündüz';
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (this.isGameOver) return;
+            if (e.key >= '1' && e.key <= '9') this.handleInput(parseInt(e.key));
+            else if (e.key === 'Backspace' || e.key === 'Delete') this.handleInput(0);
+            else if (e.key.toLowerCase() === 'n') this.noteBtn.click();
+            else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') this.undo();
+        });
+    }
+
+    startNewGame() {
+        this.resetTimer();
+        this.history = [];
+        this.completedBoxes.clear();
+        this.lives = 5;
+        this.isGameOver = false;
+        this.gameOverOverlay.style.display = 'none';
+        this.updateLivesDisplay();
+
+        this.generateSudoku();
+        this.checkInitialCompletedBoxes();
+        this.renderBoard();
+        this.updateNumpadStatus();
+        this.startTimer();
+    }
+
+    updateLivesDisplay() {
+        this.livesElement.textContent = '❤️'.repeat(this.lives) + '🖤'.repeat(5 - this.lives);
+    }
+
+    generateSudoku() {
+        this.solution = Array(9).fill(0).map(() => Array(9).fill(0));
+        this.fillBoard(this.solution);
+        this.initialBoard = this.solution.map(row => [...row]);
+        this.notesBoard = Array(9).fill(0).map(() => Array(9).fill(0).map(() => new Set()));
+
+        const difficultyMap = { 'easy': 32, 'medium': 42, 'hard': 50, 'expert': 56, 'master': 60, 'extreme': 64 };
+        let removeCount = difficultyMap[this.difficultySelect.value] || 42;
+
+        let removed = 0;
+        while (removed < removeCount) {
+            let r = Math.floor(Math.random() * 9);
+            let c = Math.floor(Math.random() * 9);
+            if (this.initialBoard[r][c] !== 0) {
+                this.initialBoard[r][c] = 0;
+                removed++;
+            }
+        }
+        this.currentBoard = this.initialBoard.map(row => [...row]);
+    }
+
+    fillBoard(board) {
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                if (board[row][col] === 0) {
+                    let nums = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+                    for (let num of nums) {
+                        if (this.isValid(board, row, col, num)) {
+                            board[row][col] = num;
+                            if (this.fillBoard(board)) return true;
+                            board[row][col] = 0;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    isValid(board, row, col, num) {
+        for (let i = 0; i < 9; i++) {
+            if (board[row][i] === num) return false;
+            if (board[i][col] === num) return false;
+            let boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
+            let boxCol = 3 * Math.floor(col / 3) + (i % 3);
+            if (board[boxRow][boxCol] === num) return false;
+        }
+        return true;
+    }
+
+    saveState() {
+        this.history.push({
+            currentBoard: this.currentBoard.map(row => [...row]),
+            notesBoard: this.notesBoard.map(row => row.map(set => new Set(set))),
+            completedBoxes: new Set(this.completedBoxes)
+        });
+        if(this.history.length > 50) this.history.shift();
+    }
+
+    undo() {
+        if (this.isGameOver || this.history.length === 0) return;
+        const lastState = this.history.pop();
+        this.currentBoard = lastState.currentBoard;
+        this.notesBoard = lastState.notesBoard;
+        this.completedBoxes = lastState.completedBoxes;
+
+        this.renderBoard();
+        if (this.selectedCell) this.selectCell(this.selectedCell.row, this.selectedCell.col);
+        this.checkErrors();
+        this.updateNumpadStatus();
+    }
+
+    handleInput(val) {
+        if (this.isGameOver || !this.selectedCell) return;
+        const { row, col } = this.selectedCell;
+        if (this.initialBoard[row][col] !== 0) return; // Sabit sayılara dokunulmaz
+
+        this.saveState();
+
+        if (this.isNoteMode) {
+            if (val === 0) this.notesBoard[row][col].clear();
+            else if (this.currentBoard[row][col] === 0) {
+                if (this.notesBoard[row][col].has(val)) this.notesBoard[row][col].delete(val);
+                else this.notesBoard[row][col].add(val);
+            }
+        } else {
+            if (val === 0) {
+                this.currentBoard[row][col] = 0;
+            } else {
+                this.currentBoard[row][col] = val;
+                this.notesBoard[row][col].clear();
+                this.clearRelatedNotes(row, col, val);
+
+                // --- HATA VE CAN DENETİMİ ---
+                if (val !== this.solution[row][col]) {
+                    this.lives--;
+                    this.updateLivesDisplay();
+
+                    if (this.lives === 0) {
+                        this.isGameOver = true;
+                        this.stopTimer();
+                        this.renderBoard();
+                        this.gameOverOverlay.style.display = 'flex';
+                        return;
+                    }
+                }
+            }
+        }
+
+        this.renderBoard();
+        this.selectCell(row, col);
+        this.checkErrors();
+        this.updateNumpadStatus();
+
+        if (!this.isNoteMode && val !== 0 && val === this.solution[row][col]) {
+            this.checkBlockCompletion(row, col);
+
+            if (this.checkWin()) {
+                this.stopTimer();
+                this.triggerGrandFireworks();
+                setTimeout(() => alert(`🎉 TEBRİKLER! Bulmacayı ${this.formatTime(this.secondsElapsed)} sürede tamamladınız!`), 800);
+            }
+        }
+    }
+
+    clearRelatedNotes(row, col, val) {
+        for (let i = 0; i < 9; i++) {
+            this.notesBoard[row][i].delete(val);
+            this.notesBoard[i][col].delete(val);
+            let boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
+            let boxCol = 3 * Math.floor(col / 3) + (i % 3);
+            this.notesBoard[boxRow][boxCol].delete(val);
+        }
+    }
+
+    checkInitialCompletedBoxes() {
+        for (let boxIndex = 0; boxIndex < 9; boxIndex++) {
+            let startRow = Math.floor(boxIndex / 3) * 3;
+            let startCol = (boxIndex % 3) * 3;
+            if (this.isBoxCorrect(startRow, startCol)) {
+                this.completedBoxes.add(boxIndex);
+            }
+        }
+    }
+
+    checkBlockCompletion(row, col) {
+        const boxIndex = Math.floor(row / 3) * 3 + Math.floor(col / 3);
+        const startRow = Math.floor(row / 3) * 3;
+        const startCol = Math.floor(col / 3) * 3;
+
+        if (!this.completedBoxes.has(boxIndex)) {
+            if (this.isBoxCorrect(startRow, startCol)) {
+                this.completedBoxes.add(boxIndex);
+                this.triggerBoxConfetti();
+            }
+        }
+    }
+
+    isBoxCorrect(startRow, startCol) {
+        for (let r = startRow; r < startRow + 3; r++) {
+            for (let c = startCol; c < startCol + 3; c++) {
+                if (this.currentBoard[r][c] !== this.solution[r][c]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    triggerBoxConfetti() {
+        if (typeof confetti === 'function') {
+            confetti({
+                particleCount: 60,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#3182ce', '#63b3ed', '#ffe082', '#48bb78']
+            });
+        }
+    }
+
+    triggerGrandFireworks() {
+        if (typeof confetti !== 'function') return;
+
+        const duration = 3 * 1000;
+        const animationEnd = Date.now() + duration;
+
+        const interval = setInterval(() => {
+            const timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) return clearInterval(interval);
+
+            const particleCount = 50 * (timeLeft / duration);
+            confetti({
+                particleCount, startVelocity: 30, spread: 360, ticks: 60,
+                origin: { x: Math.random() * 0.4 + 0.1, y: Math.random() - 0.2 }
+            });
+            confetti({
+                particleCount, startVelocity: 30, spread: 360, ticks: 60,
+                origin: { x: Math.random() * 0.4 + 0.5, y: Math.random() - 0.2 }
+            });
+        }, 250);
+    }
+
+    updateNumpadStatus() {
+        const counts = Array(10).fill(0);
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                const val = this.currentBoard[r][c];
+                if (val !== 0 && val === this.solution[r][c]) {
+                    counts[val]++;
+                }
+            }
+        }
+
+        document.querySelectorAll('.num-btn[data-val]').forEach(btn => {
+            const val = parseInt(btn.dataset.val);
+            if (counts[val] === 9) {
+                btn.classList.add('completed');
+            } else {
+                btn.classList.remove('completed');
+            }
+        });
+    }
+
+    renderBoard() {
+        this.boardElement.innerHTML = '';
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+
+                const val = this.currentBoard[r][c];
+                if (val !== 0) {
+                    cell.textContent = val;
+                    if (this.initialBoard[r][c] !== 0) {
+                        cell.classList.add('given');
+                    } else {
+                        // Yanlış sayı girildiyse Kırmızı yap
+                        if (val !== this.solution[r][c]) {
+                            cell.classList.add('error');
+                        }
+                    }
+                } else {
+                    const notes = this.notesBoard[r][c];
+                    if (notes.size > 0) {
+                        const notesGrid = document.createElement('div');
+                        notesGrid.classList.add('notes-grid');
+                        for (let i = 1; i <= 9; i++) {
+                            const noteNum = document.createElement('div');
+                            noteNum.classList.add('note-num');
+                            if(notes.has(i)) noteNum.textContent = i;
+                            notesGrid.appendChild(noteNum);
+                        }
+                        cell.appendChild(notesGrid);
+                    }
+                }
+                cell.addEventListener('click', () => this.selectCell(r, c));
+                this.boardElement.appendChild(cell);
+            }
+        }
+    }
+
+    selectCell(r, c) {
+        if (this.isGameOver) return;
+        this.selectedCell = { row: r, col: c };
+        const selectedVal = this.currentBoard[r][c];
+
+        document.querySelectorAll('.cell').forEach(cell => {
+            const cellR = parseInt(cell.dataset.row);
+            const cellC = parseInt(cell.dataset.col);
+            const cellVal = this.currentBoard[cellR][cellC];
+
+            cell.classList.remove('selected', 'highlighted', 'same-number');
+
+            if (selectedVal !== 0 && cellVal === selectedVal) {
+                cell.classList.add('same-number');
+            }
+
+            if (cellR === r || cellC === c || 
+               (Math.floor(cellR / 3) === Math.floor(r / 3) && Math.floor(cellC / 3) === Math.floor(c / 3))) {
+                cell.classList.add('highlighted');
+            }
+
+            if (cellR === r && cellC === c) {
+                cell.classList.add('selected');
+            }
+        });
+    }
+
+    checkErrors() {
+        document.querySelectorAll('.cell').forEach(cell => {
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            const val = this.currentBoard[r][c];
+            if (val !== 0 && this.initialBoard[r][c] === 0) {
+                if (val !== this.solution[r][c]) cell.classList.add('error');
+            }
+        });
+    }
+
+    checkWin() {
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (this.currentBoard[r][c] !== this.solution[r][c]) return false;
+            }
+        }
+        return true;
+    }
+
+    startTimer() {
+        this.timer = setInterval(() => {
+            this.secondsElapsed++;
+            this.timerElement.textContent = this.formatTime(this.secondsElapsed);
+        }, 1000);
+    }
+
+    stopTimer() { clearInterval(this.timer); }
+    resetTimer() { this.stopTimer(); this.secondsElapsed = 0; this.timerElement.textContent = "00:00"; }
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const secs = (seconds % 60).toString().padStart(2, '0');
+        return `${mins}:${secs}`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => new SudokuGame());
+</script>
+</body>
+</html>
