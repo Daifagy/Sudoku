@@ -1,5 +1,6 @@
 {
-  "name": "Sudoku Pro",
+  "id": "/Sudoku/",
+  "name": "Sudoku",
   "short_name": "Sudoku",
   "description": "Göz yormayan, bol özellikli ve eğlenceli Sudoku oyunu.",
   "start_url": "./index.html",
@@ -13,6 +14,15 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3021/3021791.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Sudoku Oyun Ekranı"
     }
   ]
 }
