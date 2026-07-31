@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Sudoku Pro</title>
+    <title>Sudoku</title>
     <link rel="manifest" href="manifest.json">
     <!-- Konfeti ve Havai Fişek Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -26,7 +26,7 @@
             --error-bg: #e53e3e;          
             --error-text: #ffffff;
             
-            --hint-bg: #38a169;           /* İpucu Hücresi Arka Planı (Yeşil) */
+            --hint-bg: #38a169;           
             --hint-text: #ffffff;
             
             --primary-color: #63b3ed;     
@@ -37,6 +37,7 @@
             --btn-text: #e2e8f0;
             --btn-active-bg: #3182ce;
             --completed-num: #4a5568;     
+            --count-text-color: #a0aec0;  /* Kalan sayı rozet rengi */
         }
 
         [data-theme="light"] {
@@ -67,6 +68,7 @@
             --btn-text: #2d3748;
             --btn-active-bg: #3182ce;
             --completed-num: #cbd5e0;     
+            --count-text-color: #718096;  
         }
 
         * {
@@ -266,7 +268,7 @@
             font-weight: 600;
         }
 
-        /* Aksiyon Menüsü (5 Butonlu Yapı) */
+        /* Aksiyon Menüsü */
         .action-bar {
             width: 100%;
             display: grid;
@@ -297,7 +299,7 @@
             pointer-events: none;
         }
 
-        /* Tuş Takımı */
+        /* YENİLENMİŞ TUŞ TAKIMI VE KULLANIM SAYAÇLARI */
         .numpad {
             width: 100%;
             display: grid;
@@ -307,29 +309,54 @@
         }
 
         .num-btn {
-            padding: 14px 0;
-            font-size: 1.3rem;
-            font-weight: bold;
+            padding: 8px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
             color: var(--text-color);
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .num-btn .num-main {
+            font-size: 1.3rem;
+            font-weight: bold;
+            line-height: 1.1;
+        }
+
+        .num-btn .num-count {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--count-text-color);
+            margin-top: 2px;
         }
 
         .num-btn.completed {
             opacity: 0.3;
-            text-decoration: line-through;
             background-color: var(--completed-num);
             pointer-events: none;
             box-shadow: none;
         }
 
+        .num-btn.completed .num-main {
+            text-decoration: line-through;
+        }
+
+        .num-btn.completed .num-count {
+            display: none;
+        }
+
         @media (max-width: 400px) {
             .cell { font-size: 1.3rem; }
             .note-num { font-size: 0.55rem; }
-            .num-btn { padding: 10px 0; font-size: 1.1rem; }
+            .num-btn { padding: 6px 0; }
+            .num-btn .num-main { font-size: 1.1rem; }
+            .num-btn .num-count { font-size: 0.65rem; }
             .action-bar button { font-size: 0.7rem; padding: 8px 0; }
         }
     </style>
@@ -338,7 +365,7 @@
 
 <div class="container">
     <header>
-        <h1>Sudoku Pro</h1>
+        <h1>Sudoku</h1>
         <div class="stats-bar">
             <span id="lives" class="lives-display">❤️❤️❤️❤️❤️</span>
             <span id="timer" class="timer-display">00:00</span>
@@ -365,7 +392,6 @@
         </div>
     </div>
 
-    <!-- YENİLENMİŞ AKSİYON MENÜSÜ -->
     <div class="action-bar">
         <button id="undo-btn">↩ Geri</button>
         <button id="erase-btn">⌫ Sil</button>
@@ -374,16 +400,17 @@
         <button id="theme-toggle-btn">🌙 Gece</button>
     </div>
 
+    <!-- SAYAÇLI TUŞ TAKIMI -->
     <div class="numpad">
-        <button class="num-btn" data-val="1">1</button>
-        <button class="num-btn" data-val="2">2</button>
-        <button class="num-btn" data-val="3">3</button>
-        <button class="num-btn" data-val="4">4</button>
-        <button class="num-btn" data-val="5">5</button>
-        <button class="num-btn" data-val="6">6</button>
-        <button class="num-btn" data-val="7">7</button>
-        <button class="num-btn" data-val="8">8</button>
-        <button class="num-btn" data-val="9">9</button>
+        <button class="num-btn" data-val="1"><span class="num-main">1</span><span class="num-count" id="count-1">9</span></button>
+        <button class="num-btn" data-val="2"><span class="num-main">2</span><span class="num-count" id="count-2">9</span></button>
+        <button class="num-btn" data-val="3"><span class="num-main">3</span><span class="num-count" id="count-3">9</span></button>
+        <button class="num-btn" data-val="4"><span class="num-main">4</span><span class="num-count" id="count-4">9</span></button>
+        <button class="num-btn" data-val="5"><span class="num-main">5</span><span class="num-count" id="count-5">9</span></button>
+        <button class="num-btn" data-val="6"><span class="num-main">6</span><span class="num-count" id="count-6">9</span></button>
+        <button class="num-btn" data-val="7"><span class="num-main">7</span><span class="num-count" id="count-7">9</span></button>
+        <button class="num-btn" data-val="8"><span class="num-main">8</span><span class="num-count" id="count-8">9</span></button>
+        <button class="num-btn" data-val="9"><span class="num-main">9</span><span class="num-count" id="count-9">9</span></button>
     </div>
 </div>
 
@@ -405,7 +432,7 @@ class SudokuGame {
         this.notesBoard = [];
         this.history = [];
         this.completedBoxes = new Set();
-        this.hintCells = new Set(); // İpucu verilmiş hücre takibi
+        this.hintCells = new Set();
 
         this.selectedCell = null;
         this.isNoteMode = false;
@@ -542,38 +569,31 @@ class SudokuGame {
             currentBoard: this.currentBoard.map(row => [...row]),
             notesBoard: this.notesBoard.map(row => row.map(set => new Set(set))),
             completedBoxes: new Set(this.completedBoxes),
-            hintCells: new Set(this.hintCells),
+            hintCells: new Set(this.hintCells)
         });
         if(this.history.length > 50) this.history.shift();
     }
 
     undo() {
         if (this.isGameOver || this.history.length === 0) return;
-    const lastState = this.history.pop();
-    
-    // Tahta durumlarını ve notları geri yükle
-    this.currentBoard = lastState.currentBoard;
-    this.notesBoard = lastState.notesBoard;
-    this.completedBoxes = lastState.completedBoxes;
-    this.hintCells = lastState.hintCells;
-    
-    // NOT: İpucu hakkı (this.hintsRemaining) geri iade EDİLMEZ.
-    // Böylece oyuncu ipucunu görüp hakkını geri kazanamaz.
+        const lastState = this.history.pop();
+        this.currentBoard = lastState.currentBoard;
+        this.notesBoard = lastState.notesBoard;
+        this.completedBoxes = lastState.completedBoxes;
+        this.hintCells = lastState.hintCells;
 
-    this.renderBoard();
-    if (this.selectedCell) this.selectCell(this.selectedCell.row, this.selectedCell.col);
-    this.checkErrors();
-    this.updateNumpadStatus();
+        this.renderBoard();
+        if (this.selectedCell) this.selectCell(this.selectedCell.row, this.selectedCell.col);
+        this.checkErrors();
+        this.updateNumpadStatus();
     }
 
-    // --- İPUCU KULLANMA MANTIĞI ---
     useHint() {
         if (this.isGameOver || this.hintsRemaining <= 0) return;
 
         let targetRow = -1;
         let targetCol = -1;
 
-        // 1. Seçili hücre boş veya hatalıysa ipucunu buraya uygula
         if (this.selectedCell) {
             const { row, col } = this.selectedCell;
             if (this.initialBoard[row][col] === 0 && this.currentBoard[row][col] !== this.solution[row][col]) {
@@ -582,7 +602,6 @@ class SudokuGame {
             }
         }
 
-        // 2. Hücre seçili değilse boş hücrelerden rastgele birini seç
         if (targetRow === -1) {
             const emptyCells = [];
             for (let r = 0; r < 9; r++) {
@@ -592,7 +611,7 @@ class SudokuGame {
                     }
                 }
             }
-            if (emptyCells.length === 0) return; // Çözülecek hücre kalmadıysa
+            if (emptyCells.length === 0) return;
             const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
             targetRow = randomCell.r;
             targetCol = randomCell.c;
@@ -752,6 +771,7 @@ class SudokuGame {
         }, 250);
     }
 
+    // DINAMIK RAKAM SAYAÇLARI GÜNCELLEMESI
     updateNumpadStatus() {
         const counts = Array(10).fill(0);
         for (let r = 0; r < 9; r++) {
@@ -765,7 +785,14 @@ class SudokuGame {
 
         document.querySelectorAll('.num-btn[data-val]').forEach(btn => {
             const val = parseInt(btn.dataset.val);
-            if (counts[val] === 9) {
+            const remaining = 9 - counts[val];
+            const countSpan = document.getElementById(`count-${val}`);
+            
+            if (countSpan) {
+                countSpan.textContent = remaining;
+            }
+
+            if (remaining === 0) {
                 btn.classList.add('completed');
             } else {
                 btn.classList.remove('completed');
@@ -788,7 +815,7 @@ class SudokuGame {
                     if (this.initialBoard[r][c] !== 0) {
                         cell.classList.add('given');
                     } else if (this.hintCells.has(`${r}-${c}`)) {
-                        cell.classList.add('hint-cell'); // İpucu rengi
+                        cell.classList.add('hint-cell');
                     } else if (val !== this.solution[r][c]) {
                         cell.classList.add('error');
                     }
