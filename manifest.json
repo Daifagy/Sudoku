@@ -3,28 +3,28 @@
   "name": "Sudoku",
   "short_name": "Sudoku",
   "description": "Göz yormayan, bol özellikli ve eğlenceli Sudoku oyunu.",
-  "start_url": "https://daifagy.github.io/Sudoku/",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#121418",
   "theme_color": "#121418",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://daifagy.github.io/Sudoku/icon.png",
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "https://daifagy.github.io/Sudoku/icon.png",
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "https://daifagy.github.io/Sudoku/icon.png",
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
