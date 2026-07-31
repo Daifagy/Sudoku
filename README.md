@@ -1,4 +1,4 @@
-# 🧩 Sudoku Pro (Web & Android PWA)
+# 🧩 Sudoku (Web & Android PWA)
 
 Modern, mobil uyumlu, göz yormayan temalara ve eğlenceli dinamik efektlere sahip tarayıcı bazlı ve Android cihazlarda çalışabilen (PWA) Sudoku oyunu.
 
