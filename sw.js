@@ -1,8 +1,9 @@
-const CACHE_NAME = 'sudoku-v1';
+const CACHE_NAME = 'sudoku-v2'; //
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './icon.png',
   'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js'
 ];
 
