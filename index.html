@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Sudoku</title>
     <link rel="manifest" href="manifest.json">
-    <!-- Konfeti ve Havai Fişek Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        /* --- TEMA DEĞİŞKENLERİ --- */
         [data-theme="dark"] {
             --bg-color: #121418;          
             --card-bg: #1a1d24;           
@@ -32,7 +30,7 @@
             --primary-color: #63b3ed;     
             --given-color: #ffffff;       
             --note-color: #a0aec0;        
-            --note-highlight-bg: #3182ce; /* Hızlı kalem vurgulu not arka planı */
+            --note-highlight-bg: #3182ce; 
             --note-highlight-text: #ffffff;
             
             --btn-bg: #2d3748;
@@ -103,59 +101,89 @@
             align-items: center;
         }
 
+        /* --- ÜST STAT BAR (Tüm Zamanlar, Canlar, Süre) --- */
         header {
             width: 100%;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            padding: 0 4px;
         }
 
-        h1 {
-            margin: 0;
-            font-size: 1.3rem;
-            letter-spacing: 0.5px;
+        .high-score-display {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #d69e2e;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
-        .stats-bar {
+        .header-right {
             display: flex;
             align-items: center;
             gap: 12px;
             font-weight: bold;
-            font-size: 0.95rem;
         }
 
         .lives-display {
             color: #e53e3e;
-            letter-spacing: 2px;
-            font-size: 1.1rem;
+            letter-spacing: 1px;
+            font-size: 0.95rem;
         }
 
         .timer-display {
             color: var(--primary-color);
+            font-size: 0.95rem;
         }
 
+        /* --- ORTA KONTROL BARI (Dar Zorluk, Puan, Yeni Oyun) --- */
         .controls-top {
             width: 100%;
             display: flex;
+            align-items: center;
+            justify-content: space-between;
             gap: 8px;
             margin-bottom: 12px;
         }
 
-        select, button.top-btn {
-            padding: 10px;
+        /* Zorluk Listesi: Sadece metin kadar genişlikte */
+        select {
+            width: auto;
+            min-width: 95px;
+            padding: 8px 10px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
             background: var(--card-bg);
             color: var(--text-color);
             font-weight: bold;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        select { flex: 2; }
-        button.top-btn { flex: 1; }
+        /* Ortadaki Canlı Puan Göstergesi */
+        .score-display {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #ecc94b;
+            text-align: center;
+            flex: 1;
+        }
+
+        button.top-btn {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-color);
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.85rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            white-space: nowrap;
+        }
 
         button:active { transform: scale(0.96); }
 
@@ -250,7 +278,6 @@
             z-index: 10;
         }
 
-        /* Not Izgarası ve Vurgulu Not Görseli */
         .notes-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -273,14 +300,12 @@
             transition: all 0.15s ease;
         }
 
-        /* Görsellerdeki Seçili Sayının Minik Not Vurgusu */
         .note-num.highlighted-note {
             background-color: var(--note-highlight-bg);
             color: var(--note-highlight-text);
             font-weight: bold;
         }
 
-        /* 6 Butonlu Yeni Aksiyon Barı */
         .action-bar {
             width: 100%;
             display: grid;
@@ -369,20 +394,26 @@
             .num-btn .num-main { font-size: 1.1rem; }
             .num-btn .num-count { font-size: 0.65rem; }
             .action-bar button { font-size: 0.65rem; padding: 6px 0; }
+            select, button.top-btn { font-size: 0.75rem; padding: 6px 8px; }
+            .high-score-display, .score-display, .timer-display, .lives-display { font-size: 0.8rem; }
         }
     </style>
 </head>
 <body data-theme="dark">
 
 <div class="container">
+    <!-- ÜST STAT BARI -->
     <header>
-        <h1>Sudoku</h1>
-        <div class="stats-bar">
+        <div class="high-score-display">
+            🏆 <span id="high-score">0</span>
+        </div>
+        <div class="header-right">
             <span id="lives" class="lives-display">❤️❤️❤️❤️❤️</span>
             <span id="timer" class="timer-display">00:00</span>
         </div>
     </header>
 
+    <!-- ORTA KONTROL BARI -->
     <div class="controls-top">
         <select id="difficulty">
             <option value="easy">Kolay</option>
@@ -392,6 +423,9 @@
             <option value="master">Usta</option>
             <option value="extreme">Ekstrem</option>
         </select>
+        
+        <span id="score" class="score-display">Puan: 0</span>
+
         <button id="new-game-btn" class="top-btn">Yeni Oyun</button>
     </div>
 
@@ -403,7 +437,6 @@
         </div>
     </div>
 
-    <!-- HIZLI KALEM EKLENMİŞ 6 BUTONLU AKSİYON BAR -->
     <div class="action-bar">
         <button id="undo-btn">↩ Geri</button>
         <button id="erase-btn">⌫ Sil</button>
@@ -432,6 +465,8 @@ class SudokuGame {
         this.boardElement = document.getElementById('board');
         this.timerElement = document.getElementById('timer');
         this.livesElement = document.getElementById('lives');
+        this.scoreElement = document.getElementById('score');
+        this.highScoreElement = document.getElementById('high-score');
         this.gameOverOverlay = document.getElementById('game-over');
         this.difficultySelect = document.getElementById('difficulty');
         this.noteBtn = document.getElementById('note-mode-btn');
@@ -449,9 +484,11 @@ class SudokuGame {
 
         this.selectedCell = null;
         this.isNoteMode = false;
-        this.isAutoNoteMode = false; // Hızlı Kalem Modu
+        this.isAutoNoteMode = false;
         this.lives = 5;
         this.hintsRemaining = 3;
+        this.score = 0;
+        this.highScore = parseInt(localStorage.getItem('sudoku_high_score')) || 0;
         this.isGameOver = false;
 
         this.timer = null;
@@ -462,6 +499,7 @@ class SudokuGame {
 
     init() {
         this.setupEventListeners();
+        this.updateHighScoreDisplay();
         this.startNewGame();
     }
 
@@ -481,7 +519,6 @@ class SudokuGame {
             this.noteBtn.classList.toggle('active', this.isNoteMode);
         });
 
-        // Hızlı Kalem Buton Dinleyicisi
         this.autoNoteBtn.addEventListener('click', () => this.toggleAutoNotes());
 
         this.themeBtn.addEventListener('click', () => {
@@ -509,6 +546,7 @@ class SudokuGame {
         this.hintCells.clear();
         this.lives = 5;
         this.hintsRemaining = 3;
+        this.score = 0;
         this.isGameOver = false;
         this.isAutoNoteMode = false;
         this.autoNoteBtn.classList.remove('active');
@@ -516,6 +554,7 @@ class SudokuGame {
         
         this.updateLivesDisplay();
         this.updateHintDisplay();
+        this.updateScoreDisplay();
 
         this.generateSudoku();
         this.checkInitialCompletedBoxes();
@@ -531,6 +570,30 @@ class SudokuGame {
     updateHintDisplay() {
         this.hintBtn.textContent = `💡 İpucu (${this.hintsRemaining})`;
         this.hintBtn.disabled = this.hintsRemaining <= 0;
+    }
+
+    updateScoreDisplay() {
+        this.scoreElement.textContent = `Puan: ${this.score}`;
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            localStorage.setItem('sudoku_high_score', this.highScore);
+            this.updateHighScoreDisplay();
+        }
+    }
+
+    updateHighScoreDisplay() {
+        this.highScoreElement.textContent = this.highScore.toLocaleString('tr-TR');
+    }
+
+    addScore(points) {
+        this.score += points;
+        if (this.score < 0) this.score = 0;
+        this.updateScoreDisplay();
+    }
+
+    getDifficultyMultiplier() {
+        const map = { 'easy': 50, 'medium': 60, 'hard': 75, 'expert': 100, 'master': 125, 'extreme': 150 };
+        return map[this.difficultySelect.value] || 60;
     }
 
     generateSudoku() {
@@ -584,7 +647,6 @@ class SudokuGame {
         return true;
     }
 
-    // --- HIZLI KALEM (OTOMATİK ADAY NOTLARI) MANTIĞI ---
     toggleAutoNotes() {
         this.isAutoNoteMode = !this.isAutoNoteMode;
         this.autoNoteBtn.classList.toggle('active', this.isAutoNoteMode);
@@ -592,7 +654,6 @@ class SudokuGame {
         if (this.isAutoNoteMode) {
             this.calculateAllAutoNotes();
         } else {
-            // Hızlı Kalem kapatılırsa tüm notları temizle
             this.notesBoard = Array(9).fill(0).map(() => Array(9).fill(0).map(() => new Set()));
         }
 
@@ -620,7 +681,8 @@ class SudokuGame {
             currentBoard: this.currentBoard.map(row => [...row]),
             notesBoard: this.notesBoard.map(row => row.map(set => new Set(set))),
             completedBoxes: new Set(this.completedBoxes),
-            hintCells: new Set(this.hintCells)
+            hintCells: new Set(this.hintCells),
+            score: this.score
         });
         if(this.history.length > 50) this.history.shift();
     }
@@ -632,7 +694,9 @@ class SudokuGame {
         this.notesBoard = lastState.notesBoard;
         this.completedBoxes = lastState.completedBoxes;
         this.hintCells = lastState.hintCells;
+        this.score = lastState.score;
 
+        this.updateScoreDisplay();
         this.renderBoard();
         if (this.selectedCell) this.selectCell(this.selectedCell.row, this.selectedCell.col);
         this.checkErrors();
@@ -677,6 +741,7 @@ class SudokuGame {
         
         this.hintCells.add(`${targetRow}-${targetCol}`);
         this.hintsRemaining--;
+        this.addScore(-150);
         this.updateHintDisplay();
 
         if (this.isAutoNoteMode) this.calculateAllAutoNotes();
@@ -690,8 +755,10 @@ class SudokuGame {
 
         if (this.checkWin()) {
             this.stopTimer();
+            const timeBonus = Math.max(0, 1000 - this.secondsElapsed * 2);
+            this.addScore(timeBonus);
             this.triggerGrandFireworks();
-            setTimeout(() => alert(`🎉 TEBRİKLER! Bulmacayı ${this.formatTime(this.secondsElapsed)} sürede tamamladınız!`), 800);
+            setTimeout(() => alert(`🎉 TEBRİKLER! Toplam Puanınız: ${this.score}\nSüre: ${this.formatTime(this.secondsElapsed)}`), 800);
         }
     }
 
@@ -718,6 +785,7 @@ class SudokuGame {
 
                 if (val !== this.solution[row][col]) {
                     this.lives--;
+                    this.addScore(-100);
                     this.updateLivesDisplay();
 
                     if (this.lives === 0) {
@@ -727,6 +795,8 @@ class SudokuGame {
                         this.gameOverOverlay.style.display = 'flex';
                         return;
                     }
+                } else {
+                    this.addScore(this.getDifficultyMultiplier());
                 }
             }
         }
@@ -743,8 +813,10 @@ class SudokuGame {
 
             if (this.checkWin()) {
                 this.stopTimer();
+                const timeBonus = Math.max(0, 1000 - this.secondsElapsed * 2);
+                this.addScore(timeBonus);
                 this.triggerGrandFireworks();
-                setTimeout(() => alert(`🎉 TEBRİKLER! Bulmacayı ${this.formatTime(this.secondsElapsed)} sürede tamamladınız!`), 800);
+                setTimeout(() => alert(`🎉 TEBRİKLER! Toplam Puanınız: ${this.score}\nSüre: ${this.formatTime(this.secondsElapsed)}`), 800);
             }
         }
     }
@@ -885,7 +957,6 @@ class SudokuGame {
                             noteNum.classList.add('note-num');
                             if(notes.has(i)) {
                                 noteNum.textContent = i;
-                                // SEÇİLİ SAYI VARSA MİNİK NOTLARI MAVİ KUTU EFEKTİ İLE VURGULA
                                 if (selectedVal !== 0 && i === selectedVal) {
                                     noteNum.classList.add('highlighted-note');
                                 }
@@ -902,34 +973,32 @@ class SudokuGame {
     }
 
     selectCell(r, c) {
-    if (this.isGameOver) return;
-    this.selectedCell = { row: r, col: c };
+        if (this.isGameOver) return;
+        this.selectedCell = { row: r, col: c };
 
-    // 1. Önce tahtayı ve notlardaki mavi kutucuk vurgularını yeniden çiz
-    this.renderBoard();
+        this.renderBoard();
 
-    const selectedVal = this.currentBoard[r][c];
+        const selectedVal = this.currentBoard[r][c];
 
-    // 2. Ardından seçili hücreyi, satır/sütununu ve aynı rakamları vurgula
-    document.querySelectorAll('.cell').forEach(cell => {
-        const cellR = parseInt(cell.dataset.row);
-        const cellC = parseInt(cell.dataset.col);
-        const cellVal = this.currentBoard[cellR][cellC];
+        document.querySelectorAll('.cell').forEach(cell => {
+            const cellR = parseInt(cell.dataset.row);
+            const cellC = parseInt(cell.dataset.col);
+            const cellVal = this.currentBoard[cellR][cellC];
 
-        if (selectedVal !== 0 && cellVal === selectedVal) {
-            cell.classList.add('same-number');
-        }
+            if (selectedVal !== 0 && cellVal === selectedVal) {
+                cell.classList.add('same-number');
+            }
 
-        if (cellR === r || cellC === c || 
-           (Math.floor(cellR / 3) === Math.floor(r / 3) && Math.floor(cellC / 3) === Math.floor(c / 3))) {
-            cell.classList.add('highlighted');
-        }
+            if (cellR === r || cellC === c || 
+               (Math.floor(cellR / 3) === Math.floor(r / 3) && Math.floor(cellC / 3) === Math.floor(c / 3))) {
+                cell.classList.add('highlighted');
+            }
 
-        if (cellR === r && cellC === c) {
-            cell.classList.add('selected');
-        }
-    });
-}
+            if (cellR === r && cellC === c) {
+                cell.classList.add('selected');
+            }
+        });
+    }
 
     checkErrors() {
         document.querySelectorAll('.cell').forEach(cell => {
@@ -967,7 +1036,6 @@ class SudokuGame {
     }
 }
 
-// Service Worker Kaydı
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js');
