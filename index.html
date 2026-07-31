@@ -902,35 +902,34 @@ class SudokuGame {
     }
 
     selectCell(r, c) {
-        if (this.isGameOver) return;
-        this.selectedCell = { row: r, col: c };
-        const selectedVal = this.currentBoard[r][c];
+    if (this.isGameOver) return;
+    this.selectedCell = { row: r, col: c };
 
-        document.querySelectorAll('.cell').forEach(cell => {
-            const cellR = parseInt(cell.dataset.row);
-            const cellC = parseInt(cell.dataset.col);
-            const cellVal = this.currentBoard[cellR][cellC];
+    // 1. Önce tahtayı ve notlardaki mavi kutucuk vurgularını yeniden çiz
+    this.renderBoard();
 
-            cell.classList.remove('selected', 'highlighted', 'same-number');
+    const selectedVal = this.currentBoard[r][c];
 
-            if (selectedVal !== 0 && cellVal === selectedVal) {
-                cell.classList.add('same-number');
-            }
+    // 2. Ardından seçili hücreyi, satır/sütununu ve aynı rakamları vurgula
+    document.querySelectorAll('.cell').forEach(cell => {
+        const cellR = parseInt(cell.dataset.row);
+        const cellC = parseInt(cell.dataset.col);
+        const cellVal = this.currentBoard[cellR][cellC];
 
-            if (cellR === r || cellC === c || 
-               (Math.floor(cellR / 3) === Math.floor(r / 3) && Math.floor(cellC / 3) === Math.floor(c / 3))) {
-                cell.classList.add('highlighted');
-            }
+        if (selectedVal !== 0 && cellVal === selectedVal) {
+            cell.classList.add('same-number');
+        }
 
-            if (cellR === r && cellC === c) {
-                cell.classList.add('selected');
-            }
+        if (cellR === r || cellC === c || 
+           (Math.floor(cellR / 3) === Math.floor(r / 3) && Math.floor(cellC / 3) === Math.floor(c / 3))) {
+            cell.classList.add('highlighted');
+        }
 
-            // Notların içindeki vurguları yeniden oluşturmak için renderBoard tetiklenir
-        });
-
-        this.renderBoard();
-    }
+        if (cellR === r && cellC === c) {
+            cell.classList.add('selected');
+        }
+    });
+}
 
     checkErrors() {
         document.querySelectorAll('.cell').forEach(cell => {
