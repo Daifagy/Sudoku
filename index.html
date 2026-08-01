@@ -110,6 +110,12 @@
             padding: 0 4px;
         }
 
+        .high-score-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .high-score-display {
             font-size: 0.85rem;
             font-weight: bold;
@@ -118,6 +124,17 @@
             align-items: center;
             gap: 4px;
             white-space: nowrap;
+        }
+
+        .achievements-btn {
+            background: none;
+            border: 1px solid #d69e2e;
+            color: #d69e2e;
+            border-radius: 6px;
+            padding: 2px 6px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
         }
 
         .header-right {
@@ -188,7 +205,6 @@
             text-align: center;
         }
 
-        /* 🔥 KOMBO ROZETİ EFEKTİ */
         .combo-badge {
             font-size: 0.7rem;
             font-weight: 900;
@@ -422,6 +438,109 @@
             display: none;
         }
 
+        /* --- BAŞARIM MODAL PENCERESİ STİLLERİ --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 380px;
+            padding: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-color);
+        }
+
+        .modal-close-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .achievements-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .achievement-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 8px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            opacity: 0.5;
+            filter: grayscale(1);
+            transition: all 0.3s ease;
+        }
+
+        .achievement-item.unlocked {
+            opacity: 1;
+            filter: grayscale(0);
+            border-color: #d69e2e;
+            background: rgba(214, 158, 46, 0.1);
+        }
+
+        .achievement-icon {
+            font-size: 1.5rem;
+        }
+
+        .achievement-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .achievement-title {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .achievement-desc {
+            font-size: 0.75rem;
+            color: var(--count-text-color);
+        }
+
         @media (max-width: 400px) {
             .cell { font-size: 1.3rem; }
             .note-num { font-size: 0.55rem; }
@@ -438,8 +557,11 @@
 
 <div class="container">
     <header>
-        <div class="high-score-display">
-            Tüm Zamanlar: 🏆 <span id="high-score">0</span>
+        <div class="high-score-wrapper">
+            <div class="high-score-display">
+                Tüm Zamanlar: 🏆 <span id="high-score">0</span>
+            </div>
+            <button id="achievements-toggle-btn" class="achievements-btn">🎖️ Rozetler</button>
         </div>
         <div class="header-right">
             <span id="lives" class="lives-display">❤️❤️❤️❤️❤️</span>
@@ -498,6 +620,17 @@
     </div>
 </div>
 
+<!-- BAŞARIM MODAL PENCERESİ -->
+<div id="achievements-modal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2>🎖️ Başarımlar & Rozetler</h2>
+            <button id="modal-close-btn" class="modal-close-btn">✕</button>
+        </div>
+        <div id="achievements-list" class="achievements-list"></div>
+    </div>
+</div>
+
 <script>
 class SudokuGame {
     constructor() {
@@ -513,6 +646,7 @@ class SudokuGame {
         this.autoNoteBtn = document.getElementById('auto-note-btn');
         this.hintBtn = document.getElementById('hint-btn');
         this.themeBtn = document.getElementById('theme-toggle-btn');
+        this.achievementsModal = document.getElementById('achievements-modal');
 
         this.solution = [];
         this.initialBoard = [];
@@ -528,12 +662,22 @@ class SudokuGame {
         this.lives = 5;
         this.hintsRemaining = 3;
         this.score = 0;
-        this.comboCount = 0; // Seri Hamle Sayacı
+        this.comboCount = 0;
         this.highScore = parseInt(localStorage.getItem('sudoku_high_score')) || 0;
+        this.unlockedAchievements = new Set(JSON.parse(localStorage.getItem('sudoku_achievements')) || []);
         this.isGameOver = false;
 
         this.timer = null;
         this.secondsElapsed = 0;
+
+        this.achievementsData = [
+            { id: 'speedrun', icon: '⚡', title: 'Hızlı Çözücü', desc: 'Bulmacayı 3 dakikanın altında bitir.' },
+            { id: 'flawless', icon: '🎯', title: 'Kusursuz Zafer', desc: 'Hiç hata yapmadan oyunu tamamla.' },
+            { id: 'master', icon: '🧠', title: 'Sudoku Ustası', desc: 'Uzman veya üstü zorlukta bulmaca çöz.' },
+            { id: 'nohints', icon: '💡', title: 'Bağımsız', desc: 'Hiç ipucu kullanmadan bulmacayı çöz.' },
+            { id: 'comboking', icon: '🔥', title: 'Kombo Canavarı', desc: 'x4 Combo serisine ulaş.' },
+            { id: 'highscorer', icon: '🏆', title: 'Puan Avcısı', desc: 'Tek bir oyunda 3.000 puanı aş.' }
+        ];
 
         this.init();
     }
@@ -541,6 +685,7 @@ class SudokuGame {
     init() {
         this.setupEventListeners();
         this.updateHighScoreDisplay();
+        this.renderAchievementsModal();
         this.startNewGame();
     }
 
@@ -569,6 +714,21 @@ class SudokuGame {
             this.themeBtn.textContent = newTheme === 'dark' ? '🌙 Gece' : '☀️ Gündüz';
         });
 
+        document.getElementById('achievements-toggle-btn').addEventListener('click', () => {
+            this.renderAchievementsModal();
+            this.achievementsModal.classList.add('active');
+        });
+
+        document.getElementById('modal-close-btn').addEventListener('click', () => {
+            this.achievementsModal.classList.remove('active');
+        });
+
+        this.achievementsModal.addEventListener('click', (e) => {
+            if (e.target === this.achievementsModal) {
+                this.achievementsModal.classList.remove('active');
+            }
+        });
+
         window.addEventListener('keydown', (e) => {
             if (this.isGameOver) return;
             if (e.key >= '1' && e.key <= '9') this.handleInput(parseInt(e.key));
@@ -578,6 +738,44 @@ class SudokuGame {
             else if (e.key.toLowerCase() === 'h') this.useHint();
             else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') this.undo();
         });
+    }
+
+    renderAchievementsModal() {
+        const container = document.getElementById('achievements-list');
+        container.innerHTML = '';
+
+        this.achievementsData.forEach(ach => {
+            const isUnlocked = this.unlockedAchievements.has(ach.id);
+            const item = document.createElement('div');
+            item.className = `achievement-item ${isUnlocked ? 'unlocked' : ''}`;
+            item.innerHTML = `
+                <div class="achievement-icon">${ach.icon}</div>
+                <div class="achievement-info">
+                    <div class="achievement-title">${ach.title} ${isUnlocked ? '✓' : '🔒'}</div>
+                    <div class="achievement-desc">${ach.desc}</div>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    }
+
+    unlockAchievement(id) {
+        if (!this.unlockedAchievements.has(id)) {
+            this.unlockedAchievements.add(id);
+            localStorage.setItem('sudoku_achievements', JSON.stringify(Array.from(this.unlockedAchievements)));
+            const ach = this.achievementsData.find(a => a.id === id);
+            if (ach) {
+                setTimeout(() => alert(`🎉 BAŞARIM KAZANILDI!\n${ach.icon} ${ach.title}: ${ach.desc}`), 300);
+            }
+        }
+    }
+
+    checkAchievementsOnWin() {
+        if (this.secondsElapsed < 180) this.unlockAchievement('speedrun');
+        if (this.lives === 5) this.unlockAchievement('flawless');
+        if (['expert', 'master', 'extreme'].includes(this.difficultySelect.value)) this.unlockAchievement('master');
+        if (this.hintsRemaining === 3) this.unlockAchievement('nohints');
+        if (this.score >= 3000) this.unlockAchievement('highscorer');
     }
 
     startNewGame() {
@@ -631,6 +829,10 @@ class SudokuGame {
             this.comboBadge.style.display = 'inline-block';
         } else {
             this.comboBadge.style.display = 'none';
+        }
+
+        if (multiplier === 4) {
+            this.unlockAchievement('comboking');
         }
     }
 
@@ -895,6 +1097,7 @@ class SudokuGame {
             this.stopTimer();
             const timeBonus = Math.max(0, 1000 - this.secondsElapsed * 2);
             this.addScore(timeBonus);
+            this.checkAchievementsOnWin();
             this.triggerGrandFireworks();
             setTimeout(() => alert(`🎉 TEBRİKLER! Toplam Puanınız: ${this.score}\nSüre: ${this.formatTime(this.secondsElapsed)}`), 800);
         }
@@ -923,7 +1126,6 @@ class SudokuGame {
                 this.clearRelatedNotes(row, col, val);
 
                 if (val !== this.solution[row][col]) {
-                    // Hatalı hamlede kombo sıfırlanır
                     this.comboCount = 0;
                     this.updateComboDisplay();
 
@@ -941,7 +1143,6 @@ class SudokuGame {
                         return;
                     }
                 } else {
-                    // Doğru hamlede kombo artar ve puan çarpanla eklenir
                     if (prevVal !== this.solution[row][col]) {
                         this.comboCount++;
                         this.updateComboDisplay();
@@ -964,6 +1165,7 @@ class SudokuGame {
                 this.stopTimer();
                 const timeBonus = Math.max(0, 1000 - this.secondsElapsed * 2);
                 this.addScore(timeBonus);
+                this.checkAchievementsOnWin();
                 this.triggerGrandFireworks();
                 setTimeout(() => alert(`🎉 TEBRİKLER! Toplam Puanınız: ${this.score}\nSüre: ${this.formatTime(this.secondsElapsed)}`), 800);
             }
