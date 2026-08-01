@@ -173,12 +173,38 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
+        .score-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
         .score-display {
             font-size: 0.95rem;
             font-weight: 800;
             color: #ecc94b;
             text-align: center;
-            flex: 1;
+        }
+
+        /* 🔥 KOMBO ROZETİ EFEKTİ */
+        .combo-badge {
+            font-size: 0.7rem;
+            font-weight: 900;
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.15);
+            padding: 1px 6px;
+            border-radius: 10px;
+            border: 1px solid #ff6b6b;
+            margin-top: 2px;
+            display: none;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         button.top-btn {
@@ -434,7 +460,10 @@
             </select>
         </div>
         
-        <span id="score" class="score-display">Puan: 0</span>
+        <div class="score-container">
+            <span id="score" class="score-display">Puan: 0</span>
+            <span id="combo-badge" class="combo-badge">🔥 x2 Combo!</span>
+        </div>
 
         <button id="new-game-btn" class="top-btn">Yeni Oyun</button>
     </div>
@@ -476,6 +505,7 @@ class SudokuGame {
         this.timerElement = document.getElementById('timer');
         this.livesElement = document.getElementById('lives');
         this.scoreElement = document.getElementById('score');
+        this.comboBadge = document.getElementById('combo-badge');
         this.highScoreElement = document.getElementById('high-score');
         this.gameOverOverlay = document.getElementById('game-over');
         this.difficultySelect = document.getElementById('difficulty');
@@ -498,6 +528,7 @@ class SudokuGame {
         this.lives = 5;
         this.hintsRemaining = 3;
         this.score = 0;
+        this.comboCount = 0; // Seri Hamle Sayacı
         this.highScore = parseInt(localStorage.getItem('sudoku_high_score')) || 0;
         this.isGameOver = false;
 
@@ -557,6 +588,7 @@ class SudokuGame {
         this.lives = 5;
         this.hintsRemaining = 3;
         this.score = 0;
+        this.comboCount = 0;
         this.isGameOver = false;
         this.isAutoNoteMode = false;
         this.autoNoteBtn.classList.remove('active');
@@ -565,6 +597,7 @@ class SudokuGame {
         this.updateLivesDisplay();
         this.updateHintDisplay();
         this.updateScoreDisplay();
+        this.updateComboDisplay();
 
         this.generateSudoku();
         this.checkInitialCompletedBoxes();
@@ -591,12 +624,33 @@ class SudokuGame {
         }
     }
 
+    updateComboDisplay() {
+        let multiplier = this.getComboMultiplier();
+        if (multiplier > 1) {
+            this.comboBadge.textContent = `🔥 x${multiplier} Combo!`;
+            this.comboBadge.style.display = 'inline-block';
+        } else {
+            this.comboBadge.style.display = 'none';
+        }
+    }
+
+    getComboMultiplier() {
+        if (this.comboCount >= 8) return 4;
+        if (this.comboCount >= 5) return 3;
+        if (this.comboCount >= 3) return 2;
+        return 1;
+    }
+
     updateHighScoreDisplay() {
         this.highScoreElement.textContent = this.highScore.toLocaleString('tr-TR');
     }
 
-    addScore(points) {
-        this.score += points;
+    addScore(basePoints) {
+        let finalPoints = basePoints;
+        if (basePoints > 0) {
+            finalPoints = basePoints * this.getComboMultiplier();
+        }
+        this.score += finalPoints;
         if (this.score < 0) this.score = 0;
         this.updateScoreDisplay();
     }
@@ -625,19 +679,17 @@ class SudokuGame {
                 let temp = this.initialBoard[r][c];
                 this.initialBoard[r][c] = 0;
 
-                // Benzersiz Çözüm Kontrolü (Unique Solution Check)
                 let copy = this.initialBoard.map(row => [...row]);
                 if (this.countSolutions(copy) === 1) {
                     removed++;
                 } else {
-                    this.initialBoard[r][c] = temp; // Çözüm bozulursa geri koy
+                    this.initialBoard[r][c] = temp;
                 }
             }
         }
         this.currentBoard = this.initialBoard.map(row => [...row]);
     }
 
-    // Benzersiz Çözüm Sayacı (Tek Çözüm Garantisi)
     countSolutions(board, count = 0) {
         for (let row = 0; row < 9; row++) {
             for (let col = 0; col < 9; col++) {
@@ -647,7 +699,7 @@ class SudokuGame {
                             board[row][col] = num;
                             count = this.countSolutions(board, count);
                             board[row][col] = 0;
-                            if (count >= 2) return count; // 1'den fazla çözüm varsa hemen çık
+                            if (count >= 2) return count;
                         }
                     }
                     return count;
@@ -714,7 +766,6 @@ class SudokuGame {
             }
         }
 
-        // Pointing Pairs / Triples Algoritması
         for (let boxIndex = 0; boxIndex < 9; boxIndex++) {
             let startRow = Math.floor(boxIndex / 3) * 3;
             let startCol = (boxIndex % 3) * 3;
@@ -760,7 +811,8 @@ class SudokuGame {
             completedBoxes: new Set(this.completedBoxes),
             hintCells: new Set(this.hintCells),
             score: this.score,
-            lives: this.lives
+            lives: this.lives,
+            comboCount: this.comboCount
         });
         if(this.history.length > 50) this.history.shift();
     }
@@ -774,9 +826,11 @@ class SudokuGame {
         this.hintCells = lastState.hintCells;
         this.score = lastState.score;
         this.lives = lastState.lives;
+        this.comboCount = lastState.comboCount;
 
         this.updateScoreDisplay();
         this.updateLivesDisplay();
+        this.updateComboDisplay();
 
         if (this.isAutoNoteMode) {
             this.calculateAllAutoNotes();
@@ -869,7 +923,10 @@ class SudokuGame {
                 this.clearRelatedNotes(row, col, val);
 
                 if (val !== this.solution[row][col]) {
-                    // Yalnızca hücre daha önce boşsa veya doğruysa Can/Puan düş
+                    // Hatalı hamlede kombo sıfırlanır
+                    this.comboCount = 0;
+                    this.updateComboDisplay();
+
                     if (prevVal === 0 || prevVal === this.solution[row][col]) {
                         this.lives--;
                         this.addScore(-100);
@@ -884,8 +941,10 @@ class SudokuGame {
                         return;
                     }
                 } else {
-                    // Yanlış olan sayıyı doğruyla değiştirdiyse veya ilk kez koyduysa puan ver
+                    // Doğru hamlede kombo artar ve puan çarpanla eklenir
                     if (prevVal !== this.solution[row][col]) {
+                        this.comboCount++;
+                        this.updateComboDisplay();
                         this.addScore(this.getDifficultyMultiplier());
                     }
                 }
@@ -1016,7 +1075,6 @@ class SudokuGame {
         });
     }
 
-    // TEK BİR EKRAN ÇİZİM METODU (Performanslı ve Çifte Render Yapmayan Yapı)
     renderBoard() {
         this.boardElement.innerHTML = '';
         const selectedR = this.selectedCell ? this.selectedCell.row : -1;
@@ -1032,7 +1090,6 @@ class SudokuGame {
 
                 const val = this.currentBoard[r][c];
                 
-                // Vurgu Sınıflarını Doğrudan Ekliyoruz
                 if (selectedR !== -1 && selectedC !== -1) {
                     if (selectedVal !== 0 && val === selectedVal) {
                         cell.classList.add('same-number');
