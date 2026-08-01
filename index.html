@@ -652,10 +652,13 @@ class SudokuGame {
         return true;
     }
 
-    isValid(board, row, col, num) {
+isValid(board, row, col, num) {
         for (let i = 0; i < 9; i++) {
+            // Aynı satırda varmı?
             if (board[row][i] === num) return false;
+            // Aynı sütunda varmı?
             if (board[i][col] === num) return false;
+            // Aynı 3x3 blokta varmı?
             let boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
             let boxCol = 3 * Math.floor(col / 3) + (i % 3);
             if (board[boxRow][boxCol] === num) return false;
@@ -677,12 +680,14 @@ class SudokuGame {
         if (this.selectedCell) this.selectCell(this.selectedCell.row, this.selectedCell.col);
     }
 
-    calculateAllAutoNotes() {
+        calculateAllAutoNotes() {
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
                 this.notesBoard[r][c].clear();
+                // Sadece boş olan hücreler için aday hesabı yap
                 if (this.currentBoard[r][c] === 0) {
                     for (let val = 1; val <= 9; val++) {
+                        // O anki güncel tahtaya (currentBoard) göre val sayısı bu hücreye yerleşebilir mi?
                         if (this.isValid(this.currentBoard, r, c, val)) {
                             this.notesBoard[r][c].add(val);
                         }
