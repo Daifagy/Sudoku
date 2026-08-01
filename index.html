@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Sudoku</title>
     <link rel="manifest" href="manifest.json">
+    <!-- Konfeti ve Havai Fişek Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         [data-theme="dark"] {
@@ -101,7 +102,6 @@
             align-items: center;
         }
 
-        /* --- ÜST STAT BAR (Tüm Zamanlar, Canlar, Süre) --- */
         header {
             width: 100%;
             display: flex;
@@ -139,7 +139,6 @@
             font-size: 0.95rem;
         }
 
-        /* --- ORTA KONTROL BARI (Dar Zorluk, Puan, Yeni Oyun) --- */
         .controls-top {
             width: 100%;
             display: flex;
@@ -149,7 +148,6 @@
             margin-bottom: 12px;
         }
 
-/* Zorluk kapsayıcısı ve etiket stili */
         .difficulty-wrapper {
             display: flex;
             align-items: center;
@@ -176,7 +174,6 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        /* Ortadaki Canlı Puan Göstergesi */
         .score-display {
             font-size: 0.95rem;
             font-weight: 800;
@@ -415,7 +412,6 @@
 <body data-theme="dark">
 
 <div class="container">
-    <!-- ÜST STAT BARI -->
     <header>
         <div class="high-score-display">
             Tüm Zamanlar: 🏆 <span id="high-score">0</span>
@@ -426,7 +422,6 @@
         </div>
     </header>
 
-    <!-- ORTA KONTROL BARI -->
     <div class="controls-top">
         <div class="difficulty-wrapper">
             <span class="label-text">Zorluk:</span>
@@ -652,13 +647,10 @@ class SudokuGame {
         return true;
     }
 
-isValid(board, row, col, num) {
+    isValid(board, row, col, num) {
         for (let i = 0; i < 9; i++) {
-            // Aynı satırda varmı?
             if (board[row][i] === num) return false;
-            // Aynı sütunda varmı?
             if (board[i][col] === num) return false;
-            // Aynı 3x3 blokta varmı?
             let boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
             let boxCol = 3 * Math.floor(col / 3) + (i % 3);
             if (board[boxRow][boxCol] === num) return false;
@@ -680,16 +672,58 @@ isValid(board, row, col, num) {
         if (this.selectedCell) this.selectCell(this.selectedCell.row, this.selectedCell.col);
     }
 
-        calculateAllAutoNotes() {
+    // GELİŞMİŞ HIZLI KALEM (POINTING PAIRS / TRIPLES DESTEKLİ)
+    calculateAllAutoNotes() {
+        // 1. Adım: Temel Geçerli Adayları Doldur
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
                 this.notesBoard[r][c].clear();
-                // Sadece boş olan hücreler için aday hesabı yap
                 if (this.currentBoard[r][c] === 0) {
                     for (let val = 1; val <= 9; val++) {
-                        // O anki güncel tahtaya (currentBoard) göre val sayısı bu hücreye yerleşebilir mi?
                         if (this.isValid(this.currentBoard, r, c, val)) {
                             this.notesBoard[r][c].add(val);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Adım: Pointing Pairs / Triples (Kilitli Adaylar) Algoritması
+        for (let boxIndex = 0; boxIndex < 9; boxIndex++) {
+            let startRow = Math.floor(boxIndex / 3) * 3;
+            let startCol = (boxIndex % 3) * 3;
+
+            for (let val = 1; val <= 9; val++) {
+                let rowsWithVal = new Set();
+                let colsWithVal = new Set();
+
+                for (let r = startRow; r < startRow + 3; r++) {
+                    for (let c = startCol; c < startCol + 3; c++) {
+                        if (this.currentBoard[r][c] === 0 && this.notesBoard[r][c].has(val)) {
+                            rowsWithVal.add(r);
+                            colsWithVal.add(c);
+                        }
+                    }
+                }
+
+                // Eğer o rakam bu 3x3 blokta SADECE TEK BİR SATIRDA toplanmışsa:
+                if (rowsWithVal.size === 1) {
+                    let targetRow = Array.from(rowsWithVal)[0];
+                    for (let c = 0; c < 9; c++) {
+                        // Bloğun dışındaki aynı satırdaki hücrelerden bu adayı ele
+                        if (c < startCol || c >= startCol + 3) {
+                            this.notesBoard[targetRow][c].delete(val);
+                        }
+                    }
+                }
+
+                // Eğer o rakam bu 3x3 blokta SADECE TEK BİR SÜTUNDA toplanmışsa:
+                if (colsWithVal.size === 1) {
+                    let targetCol = Array.from(colsWithVal)[0];
+                    for (let r = 0; r < 9; r++) {
+                        // Bloğun dışındaki aynı sütundaki hücrelerden bu adayı ele
+                        if (r < startRow || r >= startRow + 3) {
+                            this.notesBoard[r][targetCol].delete(val);
                         }
                     }
                 }
