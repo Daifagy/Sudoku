@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Sudoku</title>
     <link rel="manifest" href="manifest.json">
-    <!-- Konfeti ve Havai Fişek Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         [data-theme="dark"] {
@@ -617,15 +616,45 @@ class SudokuGame {
         let removeCount = difficultyMap[this.difficultySelect.value] || 42;
 
         let removed = 0;
-        while (removed < removeCount) {
+        let attempts = 0;
+        while (removed < removeCount && attempts < 200) {
             let r = Math.floor(Math.random() * 9);
             let c = Math.floor(Math.random() * 9);
+            attempts++;
             if (this.initialBoard[r][c] !== 0) {
+                let temp = this.initialBoard[r][c];
                 this.initialBoard[r][c] = 0;
-                removed++;
+
+                // Benzersiz Çözüm Kontrolü (Unique Solution Check)
+                let copy = this.initialBoard.map(row => [...row]);
+                if (this.countSolutions(copy) === 1) {
+                    removed++;
+                } else {
+                    this.initialBoard[r][c] = temp; // Çözüm bozulursa geri koy
+                }
             }
         }
         this.currentBoard = this.initialBoard.map(row => [...row]);
+    }
+
+    // Benzersiz Çözüm Sayacı (Tek Çözüm Garantisi)
+    countSolutions(board, count = 0) {
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                if (board[row][col] === 0) {
+                    for (let num = 1; num <= 9; num++) {
+                        if (this.isValid(board, row, col, num)) {
+                            board[row][col] = num;
+                            count = this.countSolutions(board, count);
+                            board[row][col] = 0;
+                            if (count >= 2) return count; // 1'den fazla çözüm varsa hemen çık
+                        }
+                    }
+                    return count;
+                }
+            }
+        }
+        return count + 1;
     }
 
     fillBoard(board) {
@@ -669,12 +698,9 @@ class SudokuGame {
         }
 
         this.renderBoard();
-        if (this.selectedCell) this.selectCell(this.selectedCell.row, this.selectedCell.col);
     }
 
-    // GELİŞMİŞ HIZLI KALEM (POINTING PAIRS / TRIPLES DESTEKLİ)
     calculateAllAutoNotes() {
-        // 1. Adım: Temel Geçerli Adayları Doldur
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
                 this.notesBoard[r][c].clear();
@@ -688,7 +714,7 @@ class SudokuGame {
             }
         }
 
-        // 2. Adım: Pointing Pairs / Triples (Kilitli Adaylar) Algoritması
+        // Pointing Pairs / Triples Algoritması
         for (let boxIndex = 0; boxIndex < 9; boxIndex++) {
             let startRow = Math.floor(boxIndex / 3) * 3;
             let startCol = (boxIndex % 3) * 3;
@@ -706,22 +732,18 @@ class SudokuGame {
                     }
                 }
 
-                // Eğer o rakam bu 3x3 blokta SADECE TEK BİR SATIRDA toplanmışsa:
                 if (rowsWithVal.size === 1) {
                     let targetRow = Array.from(rowsWithVal)[0];
                     for (let c = 0; c < 9; c++) {
-                        // Bloğun dışındaki aynı satırdaki hücrelerden bu adayı ele
                         if (c < startCol || c >= startCol + 3) {
                             this.notesBoard[targetRow][c].delete(val);
                         }
                     }
                 }
 
-                // Eğer o rakam bu 3x3 blokta SADECE TEK BİR SÜTUNDA toplanmışsa:
                 if (colsWithVal.size === 1) {
                     let targetCol = Array.from(colsWithVal)[0];
                     for (let r = 0; r < 9; r++) {
-                        // Bloğun dışındaki aynı sütundaki hücrelerden bu adayı ele
                         if (r < startRow || r >= startRow + 3) {
                             this.notesBoard[r][targetCol].delete(val);
                         }
@@ -737,7 +759,8 @@ class SudokuGame {
             notesBoard: this.notesBoard.map(row => row.map(set => new Set(set))),
             completedBoxes: new Set(this.completedBoxes),
             hintCells: new Set(this.hintCells),
-            score: this.score
+            score: this.score,
+            lives: this.lives
         });
         if(this.history.length > 50) this.history.shift();
     }
@@ -750,10 +773,16 @@ class SudokuGame {
         this.completedBoxes = lastState.completedBoxes;
         this.hintCells = lastState.hintCells;
         this.score = lastState.score;
+        this.lives = lastState.lives;
 
         this.updateScoreDisplay();
+        this.updateLivesDisplay();
+
+        if (this.isAutoNoteMode) {
+            this.calculateAllAutoNotes();
+        }
+
         this.renderBoard();
-        if (this.selectedCell) this.selectCell(this.selectedCell.row, this.selectedCell.col);
         this.checkErrors();
         this.updateNumpadStatus();
     }
@@ -801,8 +830,8 @@ class SudokuGame {
 
         if (this.isAutoNoteMode) this.calculateAllAutoNotes();
 
+        this.selectedCell = { row: targetRow, col: targetCol };
         this.renderBoard();
-        this.selectCell(targetRow, targetCol);
         this.checkErrors();
         this.updateNumpadStatus();
 
@@ -822,6 +851,7 @@ class SudokuGame {
         const { row, col } = this.selectedCell;
         if (this.initialBoard[row][col] !== 0) return;
 
+        const prevVal = this.currentBoard[row][col];
         this.saveState();
 
         if (this.isNoteMode) {
@@ -839,9 +869,12 @@ class SudokuGame {
                 this.clearRelatedNotes(row, col, val);
 
                 if (val !== this.solution[row][col]) {
-                    this.lives--;
-                    this.addScore(-100);
-                    this.updateLivesDisplay();
+                    // Yalnızca hücre daha önce boşsa veya doğruysa Can/Puan düş
+                    if (prevVal === 0 || prevVal === this.solution[row][col]) {
+                        this.lives--;
+                        this.addScore(-100);
+                        this.updateLivesDisplay();
+                    }
 
                     if (this.lives === 0) {
                         this.isGameOver = true;
@@ -851,7 +884,10 @@ class SudokuGame {
                         return;
                     }
                 } else {
-                    this.addScore(this.getDifficultyMultiplier());
+                    // Yanlış olan sayıyı doğruyla değiştirdiyse veya ilk kez koyduysa puan ver
+                    if (prevVal !== this.solution[row][col]) {
+                        this.addScore(this.getDifficultyMultiplier());
+                    }
                 }
             }
         }
@@ -859,7 +895,6 @@ class SudokuGame {
         if (this.isAutoNoteMode) this.calculateAllAutoNotes();
 
         this.renderBoard();
-        this.selectCell(row, col);
         this.checkErrors();
         this.updateNumpadStatus();
 
@@ -981,9 +1016,12 @@ class SudokuGame {
         });
     }
 
+    // TEK BİR EKRAN ÇİZİM METODU (Performanslı ve Çifte Render Yapmayan Yapı)
     renderBoard() {
         this.boardElement.innerHTML = '';
-        const selectedVal = this.selectedCell ? this.currentBoard[this.selectedCell.row][this.selectedCell.col] : 0;
+        const selectedR = this.selectedCell ? this.selectedCell.row : -1;
+        const selectedC = this.selectedCell ? this.selectedCell.col : -1;
+        const selectedVal = (selectedR !== -1 && selectedC !== -1) ? this.currentBoard[selectedR][selectedC] : 0;
 
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
@@ -993,6 +1031,21 @@ class SudokuGame {
                 cell.dataset.col = c;
 
                 const val = this.currentBoard[r][c];
+                
+                // Vurgu Sınıflarını Doğrudan Ekliyoruz
+                if (selectedR !== -1 && selectedC !== -1) {
+                    if (selectedVal !== 0 && val === selectedVal) {
+                        cell.classList.add('same-number');
+                    }
+                    if (r === selectedR || c === selectedC || 
+                       (Math.floor(r / 3) === Math.floor(selectedR / 3) && Math.floor(c / 3) === Math.floor(selectedC / 3))) {
+                        cell.classList.add('highlighted');
+                    }
+                    if (r === selectedR && c === selectedC) {
+                        cell.classList.add('selected');
+                    }
+                }
+
                 if (val !== 0) {
                     cell.textContent = val;
                     if (this.initialBoard[r][c] !== 0) {
@@ -1030,29 +1083,7 @@ class SudokuGame {
     selectCell(r, c) {
         if (this.isGameOver) return;
         this.selectedCell = { row: r, col: c };
-
         this.renderBoard();
-
-        const selectedVal = this.currentBoard[r][c];
-
-        document.querySelectorAll('.cell').forEach(cell => {
-            const cellR = parseInt(cell.dataset.row);
-            const cellC = parseInt(cell.dataset.col);
-            const cellVal = this.currentBoard[cellR][cellC];
-
-            if (selectedVal !== 0 && cellVal === selectedVal) {
-                cell.classList.add('same-number');
-            }
-
-            if (cellR === r || cellC === c || 
-               (Math.floor(cellR / 3) === Math.floor(r / 3) && Math.floor(cellC / 3) === Math.floor(c / 3))) {
-                cell.classList.add('highlighted');
-            }
-
-            if (cellR === r && cellC === c) {
-                cell.classList.add('selected');
-            }
-        });
     }
 
     checkErrors() {
